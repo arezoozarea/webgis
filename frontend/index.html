@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>تحلیل دسترسی به خدمات مکانی محلی</title>
+
+    <link
+        rel="stylesheet"
+        href="libs/maplibre-gl.css"
+    />
+    <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/vazirmatn@33.0.3/Vazirmatn-font-face.css"
+    />
+
+    <link
+        rel="stylesheet"
+        href="css/style.css"
+    />
+</head>
+
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar">
+
+            <div class="sidebar-header">
+                <h1>
+                    تحلیل دسترسی  کاربر به فعالیت های محلی
+                </h1>
+
+                <p>
+                    .برای شروع، یک نقطه را روی نقشه انتخاب کنید
+                </p>
+            </div>
+
+            <div id="origin-info">
+                هنوز مبدا انتخاب نشده است.
+            </div>
+
+            <div class="category-section-title">
+                <span>جستجو فعالیت</span>
+
+                <small>
+                    گروه موردنظر را برای نمایش نقاط نزدیک انتخاب کنید.
+                </small>
+            </div>
+
+            <div class="categories">
+
+                <button
+                    type="button"
+                    data-category="pharmacy"
+                >
+                    داروخانه
+                </button>
+
+                <button
+                    type="button"
+                    data-category="clinic"
+                >
+                    درمانگاه
+                </button>
+
+                <button
+                    type="button"
+                    data-category="metro"
+                >
+                    مترو
+                </button>
+
+                <button
+                    type="button"
+                    data-category="parking"
+                >
+                    پارکینگ
+                </button>
+
+                <button
+                    type="button"
+                    data-category="coffee"
+                >
+                    کافه
+                </button>
+
+            </div>
+
+            <div
+                id="profile-status"
+                aria-live="polite"
+            ></div>
+
+        </aside>
+
+        <main class="map-panel">
+          <div class="map-hint">
+              برای انتخاب مبدا روی نقشه کلیک کنید.
+          </div>
+
+            <div id="map"></div>
+        </main>
+
+    </div>
+
+    <script src="libs/maplibre-gl.js"></script>
+
+    <script
+        src="https://unpkg.com/@mapbox/polyline@1.2.1/src/polyline.js"
+    ></script>
+
+    <script
+        type="module"
+        src="js/app.js"
+    ></script>
+</body>
+</html>
