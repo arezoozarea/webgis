@@ -1,0 +1,15 @@
+[project]
+name = "spatial-etl"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["sqlalchemy","psycopg2-binary"]
+
+[project.scripts]
+spatial-etl = "spatial_etl.main:run"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
