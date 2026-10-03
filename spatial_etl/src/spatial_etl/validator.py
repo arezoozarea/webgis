@@ -5,18 +5,29 @@ from spatial_etl.config import (
     IDatabaseConfig,
     build_db_url,
 )
-
+from uuid import UUID
 
 @dataclass
 class IValidationResult:
     table_name: str
+    geometry_column: str
     total_rows: int
     null_geometry_count: int
     empty_geometry_count: int
     invalid_geometry_count: int
     wrong_srid_count: int
     out_of_bounds_count: int
-
+    @property
+    def issue_count(self) -> int:
+        return ( self.null_geometry_count
+                 + self.empty_geometry_count
+                 + self.invalid_geometry_count
+                 + self.wrong_srid_count
+                 + self.out_of_bounds_count
+        )
+    @property
+    def is_valid(self) -> bool:
+        return self.issue_count == 0
 
 @dataclass
 class ISpatialTableInfo:
@@ -29,9 +40,19 @@ def get_engine(config: IDatabaseConfig) -> Engine:
     return (create_engine(build_db_url(config)))
 
 
-def get_db_tables(engine: Engine, config: IValidationConfig) -> list[ISpatialTableInfo]:
+def get_db_tables(engine: Engine, config: IValidationConfig, clean_only: bool = False,) -> list[ISpatialTableInfo]:
+    if clean_only:
+        table_filter = "AND f_table_name LIKE 'clean_%'"
+    else:
+        table_filter = """
+            AND f_table_name NOT LIKE 'clean_%'
+            AND f_table_name NOT LIKE 'quarantine_%'
+        """
     sql = text(
-        """select f_table_name as table_name,f_geometry_column as geometry_column, type as geometry_type from geometry_columns where f_table_schema = :schema order by f_table_name """)
+        f"""select f_table_name as table_name,f_geometry_column as geometry_column,
+           type as geometry_type from geometry_columns WHERE f_table_schema = :schema
+          {table_filter}
+        ORDER BY f_table_name;""")
     with engine.connect() as conn:
         rows = conn.execute(sql, {"schema": config.schema}).mappings().all()
     return [
@@ -53,15 +74,16 @@ def validate_table(engine: Engine, config: IValidationConfig, table: ISpatialTab
             COUNT(*) FILTER (
                 WHERE {geom} IS NOT NULL
                   AND NOT ST_IsValid({geom})
+                   AND NOT ST_IsEmpty({geom})
             ) AS invalid_geometry_count,
 
             COUNT(*) FILTER (
                 WHERE {geom} IS NOT NULL
                   AND ST_SRID({geom}) <> :expected_srid
             ) AS wrong_srid_count,
-            count(*) filter(where not ST_IsEmpty({geom}) as empty_geometry_count, 
+            count(*) filter(where ST_IsEmpty({geom})) as empty_geometry_count, 
             COUNT(*) FILTER (
-                WHERE {geom} IS NOT NULL
+                WHERE {geom} IS NOT NULL and not ST_IsEmpty({geom})
                   AND (
                     ST_X(ST_PointOnSurface({geom})) NOT BETWEEN :min_lon AND :max_lon
                     OR
@@ -73,18 +95,17 @@ def validate_table(engine: Engine, config: IValidationConfig, table: ISpatialTab
                                  "max_lon": config.max_lon,
                                  "min_lat": config.min_lat,
                                  "max_lat": config.max_lat }).mappings().one()
-    return IValidationResult(table_name=table_name,
+    return IValidationResult(table_name=table_name, geometry_column= geom,
         total_rows=row["total_rows"],
         null_geometry_count=row["null_geometry_count"],
         empty_geometry_count= row["empty_geometry_count"],
         invalid_geometry_count=row["invalid_geometry_count"],
         wrong_srid_count=row["wrong_srid_count"],
         out_of_bounds_count=row["out_of_bounds_count"])
-
-def validate_database(dbs_config: IDatabaseConfig, validation_config: IValidationConfig) -> list[IValidationResult]:
+def validate_database(dbs_config: IDatabaseConfig, validation_config: IValidationConfig, clean_only: bool = False) -> list[IValidationResult]:
     engine = get_engine(dbs_config)
     try:
-        tables = get_db_tables(engine, validation_config)
+        tables = get_db_tables(engine, validation_config, clean_only= clean_only)
         results = [validate_table(engine, validation_config, table) for table in tables]
         print_results(results)
         return results
